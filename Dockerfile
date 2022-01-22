@@ -1,5 +1,5 @@
  FROM node:15-alpine
- WORKDIR /DownloadBot
+ WORKDIR ./DownloadBot
  COPY . .
  RUN yarn install --production
  CMD ["node", "bot.js"]

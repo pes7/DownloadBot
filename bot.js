@@ -2,7 +2,6 @@ const { Markup, Telegraf } = require('telegraf')
 const { log } = require('console');
 const arGs = require('./commandArgs');
 const MongoClient = require("mongodb").MongoClient;
-const { stringify } = require('querystring');
 const axios = require('axios');
 const fs = require('fs')
 //const request = require('request');
@@ -282,14 +281,18 @@ bot.on('message', (ctx) => {
                     let fileId = ctx.update.message.audio.file_id;
                     ctx.telegram.getFileLink(fileId).then((url) => {
                         axios.get(url.href, { responseType: "arraybuffer" }).then((music) => {
-                            let path = `${musicFolderPrefix}${sett.Settings.MusicFolder}/${fileName}`;
+                            let path = `${musicFolderPrefix}/${sett.Settings.MusicFolder}/${fileName}`;
+                            if(!fs.existsSync(path)){
                             fs.writeFile(path, music.data,(err)=>{
                                 if(!err){
-                                    ctx.reply(`File ${fileName} was uploaded to ${path}`);
+                                    ctx.reply(`[OK] File ${fileName} was uploaded to ${path}`);
                                 }else{
-                                    ctx.reply(`Error on uploading ${err}`);
+                                    ctx.reply(`[ERROR] Error on uploading ${err}`);
                                 }
                             })
+                            }else{
+                                ctx.reply(`[ERROR] Error ${fileName} already exist on path: ${path}`);
+                            }
                         })
                     })
                 }
