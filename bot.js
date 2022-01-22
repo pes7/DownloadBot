@@ -25,7 +25,7 @@ if (_DEBUG) {
 
 let token;
 if (_DEBUG) {
-    token = "5119937388:AAEy1LwGuDSDc-eDsUIwF8BVPCXIPDrRoH0";
+    token = "2b24b422b42b";
 } else {
     token = process.env.TOKEN;
 }
