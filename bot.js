@@ -6,7 +6,7 @@ const axios = require('axios');
 const fs = require('fs')
 //const request = require('request');
 
-const _DEBUG = false;
+const _DEBUG = process.env.DEBUG || true;
 
 let rootPassword;
 if (_DEBUG) {
@@ -300,6 +300,38 @@ bot.command("folderD", (ctx) => {
     }
 })
 
+function downloadFile(ctx,url,path,fileName,num=1) {
+    console.log(`Download ${fileName} from ${url}`);
+    axios.get(url.href, { responseType: "arraybuffer" }).then((file) => {
+        if (!fs.existsSync(path)) {
+            fs.writeFile(path, file.data, (err) => {
+                if (!err) {
+                    let resp = `[OK] File ${fileName} was uploaded to ${path}`;
+                    console.log(resp);
+                    ctx.reply(resp);
+                } else {
+                    let resp = `[ERROR] Error on uploading ${err}`;
+                    console.log(resp);
+                    ctx.reply(resp);
+                }
+            })
+        } else {
+            let resp = `[ERROR] Error ${fileName} already exist on path: ${path}`;
+            console.log(resp);
+            ctx.reply(resp);
+        }
+    }).catch(function (error) {
+        let resp = `[ERROR DW] ${error} when download ${fileName} from ${url}, try again ${num} time (5 sec.)`;
+        console.log(resp);
+        ctx.reply(resp);
+        if(num < 3){
+            setTimeout(()=>{
+                downloadFile(ctx,url,path,fileName,++num);
+            },5000);
+        }
+    })
+}
+
 bot.on('message', (ctx) => {
     let user = ctx.from.username;
     UserSettings.getUserSettings(user, (settings) => {
@@ -310,33 +342,10 @@ bot.on('message', (ctx) => {
                     let fileName = ctx.update.message.audio.file_name;
                     let fileId = ctx.update.message.audio.file_id;
                     ctx.telegram.getFileLink(fileId).then((url) => {
-                        console.log(`Download ${fileName} from ${url}`);
-                        axios.get(url.href, { responseType: "arraybuffer" }).then((music) => {
-                            let path = `${musicFolderPrefix}/${sett.Settings.MusicFolder}/${fileName}`;
-                            if (!fs.existsSync(path)) {
-                                fs.writeFile(path, music.data, (err) => {
-                                    if (!err) {
-                                        let resp = `[OK] File ${fileName} was uploaded to ${path}`;
-                                        console.log(resp);
-                                        ctx.reply(resp);
-                                    } else {
-                                        let resp = `[ERROR] Error on uploading ${err}`;
-                                        console.log(resp);
-                                        ctx.reply(resp);
-                                    }
-                                })
-                            } else {
-                                let resp = `[ERROR] Error ${fileName} already exist on path: ${path}`;
-                                console.log(resp);
-                                ctx.reply(resp);
-                            }
-                        }).catch(function (error) {
-                            let resp = `[ERROR] ${error}`;
-                            console.log(resp);
-                            ctx.reply(resp);
-                        })
+                        let path = `${musicFolderPrefix}/${sett.Settings.MusicFolder}/${fileName}`;
+                        downloadFile(ctx,url,path,fileName);
                     }).catch(function (error) {
-                        let resp = `[ERROR] ${error}`;
+                        let resp = `[ERROR TG] ${error}`;
                         console.log(resp);
                         ctx.reply(resp);
                     })
@@ -350,33 +359,10 @@ bot.on('message', (ctx) => {
                     let fileName = ctx.update.message.document.file_name;
                     let fileId = ctx.update.message.document.file_id;
                     ctx.telegram.getFileLink(fileId).then((url) => {
-                        console.log(`Download ${fileName} from ${url}`);
-                        axios.get(url.href, { responseType: "arraybuffer" }).then((music) => {
-                            let path = `${documentFolderPrefix}/${sett.Settings.DocumentFolder}/${fileName}`;
-                            if (!fs.existsSync(path)) {
-                                fs.writeFile(path, document.data, (err) => {
-                                    if (!err) {
-                                        let resp = `[OK] File ${fileName} was uploaded to ${path}`;
-                                        console.log(resp);
-                                        ctx.reply(resp);
-                                    } else {
-                                        let resp = `[ERROR] Error on uploading ${err}`;
-                                        console.log(resp);
-                                        ctx.reply(resp);
-                                    }
-                                })
-                            } else {
-                                let resp = `[ERROR] Error ${fileName} already exist on path: ${path}`;
-                                console.log(resp);
-                                ctx.reply(resp);
-                            }
-                        }).catch(function (error) {
-                            let resp = `[ERROR] ${error}`;
-                            console.log(resp);
-                            ctx.reply(resp);
-                        })
+                        let path = `${documentFolderPrefix}/${sett.Settings.DocumentFolder}/${fileName}`;
+                        downloadFile(ctx,url,path,fileName);
                     }).catch(function (error) {
-                        let resp = `[ERROR] ${error}`;
+                        let resp = `[ERROR TG] ${error}`;
                         console.log(resp);
                         ctx.reply(resp);
                     })
