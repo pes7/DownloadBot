@@ -6,7 +6,7 @@ const axios = require('axios');
 const fs = require('fs')
 //const request = require('request');
 
-const _DEBUG = process.env.DEBUG || true;
+const _DEBUG = false;
 
 let rootPassword;
 if (_DEBUG) {
