@@ -31,7 +31,7 @@ if (_DEBUG) {
 
 let token;
 if (_DEBUG) {
-    token = "2b24b422b42b";
+    token = fs.readFileSync('../telegramkey.txt', 'utf8');
 } else {
     token = process.env.TOKEN;
 }
@@ -146,7 +146,6 @@ class dbWork {
     static creatTable(table, json = undefined, clb = undefined) {
         console.log(`Check ${table}`)
         const client = new MongoClient(_url, _setting);
-        console.log(client)
         client.connect(function (err) {
             if (err) { console.log(`Database ${_DB} not EXIST!!! Create IT NOW!!!!`); return false; };
             var db = client.db(_DB);
@@ -200,15 +199,15 @@ bot.command("pass", (ctx) => {
             if (settings) {
                 ctx.reply(`You already logined!`);
             } else {
-                if(pass === rootPassword){
+                if (pass === rootPassword) {
                     UserSettings.insertUserSettings(new UserSettings(ctx.message.from.username), (result) => {
                         if (result) {
                             ctx.reply(`Now you are registered\nType /start again and configure your folders`);
-                        }else{
+                        } else {
                             ctx.reply(`Error on creating user`);
                         }
                     })
-                }else{
+                } else {
                     ctx.reply('Wrong password!')
                 }
             }
@@ -311,42 +310,80 @@ bot.on('message', (ctx) => {
                     let fileName = ctx.update.message.audio.file_name;
                     let fileId = ctx.update.message.audio.file_id;
                     ctx.telegram.getFileLink(fileId).then((url) => {
+                        console.log(`Download ${fileName} from ${url}`);
                         axios.get(url.href, { responseType: "arraybuffer" }).then((music) => {
                             let path = `${musicFolderPrefix}/${sett.Settings.MusicFolder}/${fileName}`;
                             if (!fs.existsSync(path)) {
                                 fs.writeFile(path, music.data, (err) => {
                                     if (!err) {
-                                        ctx.reply(`[OK] File ${fileName} was uploaded to ${path}`);
+                                        let resp = `[OK] File ${fileName} was uploaded to ${path}`;
+                                        console.log(resp);
+                                        ctx.reply(resp);
                                     } else {
-                                        ctx.reply(`[ERROR] Error on uploading ${err}`);
+                                        let resp = `[ERROR] Error on uploading ${err}`;
+                                        console.log(resp);
+                                        ctx.reply(resp);
                                     }
                                 })
                             } else {
-                                ctx.reply(`[ERROR] Error ${fileName} already exist on path: ${path}`);
+                                let resp = `[ERROR] Error ${fileName} already exist on path: ${path}`;
+                                console.log(resp);
+                                ctx.reply(resp);
                             }
+                        }).catch(function (error) {
+                            let resp = `[ERROR] ${error}`;
+                            console.log(resp);
+                            ctx.reply(resp);
                         })
+                    }).catch(function (error) {
+                        let resp = `[ERROR] ${error}`;
+                        console.log(resp);
+                        ctx.reply(resp);
                     })
+                } else {
+                    let resp = `[ERROR] File is not audio`;
+                    console.log(resp);
+                    ctx.reply(resp);
                 }
             } else if (sett.Settings.WhatUploading === "docs") {
                 if (ctx.update.message.document) {
                     let fileName = ctx.update.message.document.file_name;
                     let fileId = ctx.update.message.document.file_id;
                     ctx.telegram.getFileLink(fileId).then((url) => {
-                        axios.get(url.href, { responseType: "arraybuffer" }).then((document) => {
+                        console.log(`Download ${fileName} from ${url}`);
+                        axios.get(url.href, { responseType: "arraybuffer" }).then((music) => {
                             let path = `${documentFolderPrefix}/${sett.Settings.DocumentFolder}/${fileName}`;
                             if (!fs.existsSync(path)) {
                                 fs.writeFile(path, document.data, (err) => {
                                     if (!err) {
-                                        ctx.reply(`[OK] File ${fileName} was uploaded to ${path}`);
+                                        let resp = `[OK] File ${fileName} was uploaded to ${path}`;
+                                        console.log(resp);
+                                        ctx.reply(resp);
                                     } else {
-                                        ctx.reply(`[ERROR] Error on uploading ${err}`);
+                                        let resp = `[ERROR] Error on uploading ${err}`;
+                                        console.log(resp);
+                                        ctx.reply(resp);
                                     }
                                 })
                             } else {
-                                ctx.reply(`[ERROR] Error ${fileName} already exist on path: ${path}`);
+                                let resp = `[ERROR] Error ${fileName} already exist on path: ${path}`;
+                                console.log(resp);
+                                ctx.reply(resp);
                             }
+                        }).catch(function (error) {
+                            let resp = `[ERROR] ${error}`;
+                            console.log(resp);
+                            ctx.reply(resp);
                         })
+                    }).catch(function (error) {
+                        let resp = `[ERROR] ${error}`;
+                        console.log(resp);
+                        ctx.reply(resp);
                     })
+                } else {
+                    let resp = `[ERROR] File is not document`;
+                    console.log(resp);
+                    ctx.reply(resp);
                 }
             }
         } else {
