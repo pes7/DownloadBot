@@ -8,6 +8,13 @@ const fs = require('fs')
 
 const _DEBUG = false;
 
+let rootPassword;
+if (_DEBUG) {
+    rootPassword = "1488";
+} else {
+    rootPassword = process.env.ROOTPASSWORD;
+}
+
 let documentFolderPrefix;
 if (_DEBUG) {
     documentFolderPrefix = "./";
@@ -24,7 +31,7 @@ if (_DEBUG) {
 
 let token;
 if (_DEBUG) {
-    token = "2b24b422b42b";
+    token = fs.readFileSync('../telegramkey.txt', 'utf8');
 } else {
     token = process.env.TOKEN;
 }
@@ -32,6 +39,7 @@ let name = "DownLBot";
 
 const bot = new Telegraf(token)
 const _setting = { useUnifiedTopology: true, connectTimeoutMS: 30000, keepAlive: 1 };
+bot.use(arGs());
 
 let _url;
 if (_DEBUG) {
@@ -138,7 +146,6 @@ class dbWork {
     static creatTable(table, json = undefined, clb = undefined) {
         console.log(`Check ${table}`)
         const client = new MongoClient(_url, _setting);
-        console.log(client)
         client.connect(function (err) {
             if (err) { console.log(`Database ${_DB} not EXIST!!! Create IT NOW!!!!`); return false; };
             var db = client.db(_DB);
@@ -179,9 +186,33 @@ bot.command("start", (ctx) => {
                 }
             }
         } else {//Crete new settings
-            ctx.reply("Chose new music folder, type: '/folderM foldername' in chat\nChose new document folder, '/folderD foldername' in chat");
+            ctx.reply("Pass password verefication by '/pass password'");
+            //ctx.reply("Chose new music folder, type: '/folderM foldername' in chat\nChose new document folder, '/folderD foldername' in chat");
         }
     })
+})
+
+bot.command("pass", (ctx) => {
+    let pass = ctx.state.command.args[0];
+    if (pass) {
+        UserSettings.getUserSettings(ctx.from.username, (settings) => {
+            if (settings) {
+                ctx.reply(`You already logined!`);
+            } else {
+                if (pass === rootPassword) {
+                    UserSettings.insertUserSettings(new UserSettings(ctx.message.from.username), (result) => {
+                        if (result) {
+                            ctx.reply(`Now you are registered\nType /start again and configure your folders`);
+                        } else {
+                            ctx.reply(`Error on creating user`);
+                        }
+                    })
+                } else {
+                    ctx.reply('Wrong password!')
+                }
+            }
+        });
+    }
 })
 
 const regexMusic = new RegExp(/(.+)_music/i)
@@ -219,7 +250,6 @@ function changeWhatUpaload(ctx, user, whatUpload) {
     })
 }
 
-bot.use(arGs());
 bot.command("folderM", (ctx) => {
     const folderName = "Music";
     let folder = ctx.state.command.args[0];
@@ -270,6 +300,38 @@ bot.command("folderD", (ctx) => {
     }
 })
 
+function downloadFile(ctx,url,path,fileName,num=1) {
+    console.log(`Download ${fileName} from ${url}`);
+    axios.get(url.href, { responseType: "arraybuffer" }).then((file) => {
+        if (!fs.existsSync(path)) {
+            fs.writeFile(path, file.data, (err) => {
+                if (!err) {
+                    let resp = `[OK] File ${fileName} was uploaded to ${path}`;
+                    console.log(resp);
+                    ctx.reply(resp);
+                } else {
+                    let resp = `[ERROR] Error on uploading ${err}`;
+                    console.log(resp);
+                    ctx.reply(resp);
+                }
+            })
+        } else {
+            let resp = `[ERROR] Error ${fileName} already exist on path: ${path}`;
+            console.log(resp);
+            ctx.reply(resp);
+        }
+    }).catch(function (error) {
+        let resp = `[ERROR DW] ${error} when download ${fileName} from ${url}, try again ${num} time (5 sec.)`;
+        console.log(resp);
+        ctx.reply(resp);
+        if(num < 3){
+            setTimeout(()=>{
+                downloadFile(ctx,url,path,fileName,++num);
+            },5000);
+        }
+    })
+}
+
 bot.on('message', (ctx) => {
     let user = ctx.from.username;
     UserSettings.getUserSettings(user, (settings) => {
@@ -280,24 +342,35 @@ bot.on('message', (ctx) => {
                     let fileName = ctx.update.message.audio.file_name;
                     let fileId = ctx.update.message.audio.file_id;
                     ctx.telegram.getFileLink(fileId).then((url) => {
-                        axios.get(url.href, { responseType: "arraybuffer" }).then((music) => {
-                            let path = `${musicFolderPrefix}/${sett.Settings.MusicFolder}/${fileName}`;
-                            if(!fs.existsSync(path)){
-                            fs.writeFile(path, music.data,(err)=>{
-                                if(!err){
-                                    ctx.reply(`[OK] File ${fileName} was uploaded to ${path}`);
-                                }else{
-                                    ctx.reply(`[ERROR] Error on uploading ${err}`);
-                                }
-                            })
-                            }else{
-                                ctx.reply(`[ERROR] Error ${fileName} already exist on path: ${path}`);
-                            }
-                        })
+                        let path = `${musicFolderPrefix}/${sett.Settings.MusicFolder}/${fileName}`;
+                        downloadFile(ctx,url,path,fileName);
+                    }).catch(function (error) {
+                        let resp = `[ERROR TG] ${error}`;
+                        console.log(resp);
+                        ctx.reply(resp);
                     })
+                } else {
+                    let resp = `[ERROR] File is not audio`;
+                    console.log(resp);
+                    ctx.reply(resp);
                 }
-            }else if(sett.Settings.WhatUploading === "docs"){
-                ctx.reply("Sorry, it don't work now. Will be in future!");
+            } else if (sett.Settings.WhatUploading === "docs") {
+                if (ctx.update.message.document) {
+                    let fileName = ctx.update.message.document.file_name;
+                    let fileId = ctx.update.message.document.file_id;
+                    ctx.telegram.getFileLink(fileId).then((url) => {
+                        let path = `${documentFolderPrefix}/${sett.Settings.DocumentFolder}/${fileName}`;
+                        downloadFile(ctx,url,path,fileName);
+                    }).catch(function (error) {
+                        let resp = `[ERROR TG] ${error}`;
+                        console.log(resp);
+                        ctx.reply(resp);
+                    })
+                } else {
+                    let resp = `[ERROR] File is not document`;
+                    console.log(resp);
+                    ctx.reply(resp);
+                }
             }
         } else {
             ctx.message('Please use /start to start');
